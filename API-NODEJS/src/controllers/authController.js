@@ -2,10 +2,20 @@ const express = require('express');
 
 const bcrypt = require('bcryptjs');
 
+const jsonwebtoken = require('jsonwebtoken');
+
+const meuToken = require('../config/auth.json');
+
 const User = require('../models/user');
 //express framework usado para controlar rotas, retorna para o front end jsons, pegar parametros da req, bodys da req etc
 
 const router = express.Router();
+
+function generateToken(params = {}){
+  return jsonwebtoken.sign(params, meuToken.secret, {
+        expiresIn: 86400
+    })
+}
 
 router.post('/register', async (req, res) => {
     
@@ -16,7 +26,10 @@ router.post('/register', async (req, res) => {
             return res.status(400).send({ error: 'Email em uso.' }); 
          
             const user = await User.create(req.body);
-            return res.send(user);
+            
+            user.password = undefined;
+
+            return res.send({ user,  token: generateToken({ id: user.id }) });
 
 
     }catch( err ){
@@ -36,7 +49,9 @@ router.post('/authenticate', async (req, res) => {
     if(!await bcrypt.compare(password, user.password))
     return res.status(400).send({ error: 'Invalid password' });
 
-    res.send({ user });
+    user.password = undefined;
+
+    res.send({ user, token: generateToken({id: user.id}) });
 
 });
 
